@@ -84,15 +84,7 @@ visit (Mul e1 e2) = do
 
 visit (Talos e) = visit e      -- wrapper, pass straight through
 
--- ─────────────────────────────────────────────────────────────
--- Entry point
--- ─────────────────────────────────────────────────────────────
-
-irGen :: Expr -> IO ()
-irGen prog = do
-  let finalState = execState (visit prog) initIRState
-  let hg         = irGraph finalState
-  putStrLn "=== Nodes ==="
-  mapM_ print (Map.toList (hgNodes hg))
-  putStrLn "=== Edges ==="
-  mapM_ print (hgEdges hg)
+irGen :: Expr -> HG
+irGen prog =
+    let finalState = execState (visit prog) initIRState
+    in  irGraph finalState
