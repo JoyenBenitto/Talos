@@ -1,4 +1,9 @@
 module Main (main) where
 
+import Benchmarks.Simple1D
+
 main :: IO ()
-main = putStrLn "Test suite not yet implemented."
+main = do
+    putStrLn "====== Test suite ======"
+    testentry
+    putStrLn "All tests passed!"
