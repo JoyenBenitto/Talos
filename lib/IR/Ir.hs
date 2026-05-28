@@ -1,46 +1,98 @@
-
-module IR.Ir (
-    irGen
-) where
+module IR.Ir (irGen) where
 
 import LangTypes
-import Control.Monad
+import Control.Monad.State
+import Data.Map.Strict (Map)
+import qualified Data.Map.Strict as Map
 
-data HG = HG -- Placeholder for the hypergraph representation of the IR
+-- ─────────────────────────────────────────────────────────────
+-- The hypergraph: nodes are PEs, edges connect them
+-- ─────────────────────────────────────────────────────────────
 
-{--
-The temp keeps track of the current temporary variable
---}
+data HG = HG
+  { hgNodes :: Map NodeId PE           -- NodeId → what operation
+  , hgEdges :: [(NodeId, NodeId)]      -- (producer, consumer)
+  } deriving (Show)
 
-data IRState = IRIntrim  Int
-    Hypergraph HG
-    deriving (Show, Eq)
+emptyHG :: HG
+emptyHG = HG Map.empty []
 
-visit :: Expr -> IO ()
-visit (Talos expr) = visit expr
-visit (Lit n) = putStrLn $ "Literal: " ++ show n
+-- ─────────────────────────────────────────────────────────────
+-- The state we thread through the whole traversal
+-- ─────────────────────────────────────────────────────────────
+
+type NodeId = Int
+
+data IRState = IRState
+  { irCounter :: Int    -- next free NodeId
+  , irGraph   :: HG     -- the hypergraph being built
+  } deriving (Show)
+
+initIRState :: IRState
+initIRState = IRState { irCounter = 0, irGraph = emptyHG }
+
+-- ─────────────────────────────────────────────────────────────
+-- State primitives
+-- ─────────────────────────────────────────────────────────────
+
+freshId :: State IRState NodeId
+freshId = do
+  s <- get
+  put s { irCounter = irCounter s + 1 }
+  return (irCounter s)
+
+emitNode :: NodeId -> PE -> State IRState ()
+emitNode nid op = modify $ \s ->
+  let hg  = irGraph s
+      hg' = hg { hgNodes = Map.insert nid op (hgNodes hg) }
+  in  s { irGraph = hg' }
+
+emitEdge :: NodeId -> NodeId -> State IRState ()
+emitEdge from to = modify $ \s ->
+  let hg  = irGraph s
+      hg' = hg { hgEdges = (from, to) : hgEdges hg }
+  in  s { irGraph = hg' }
+
+-- ─────────────────────────────────────────────────────────────
+-- The visitor: pattern match on Expr, recurse, emit nodes
+-- ─────────────────────────────────────────────────────────────
+
+visit :: Expr -> State IRState NodeId
+
+visit (Lit n) = do
+  nid <- freshId
+  emitNode nid (ICONST n)
+  return nid
+
 visit (Add e1 e2) = do
-    putStrLn "Addition:"
-    visit e1
-    visit e2
-visit (Sub e1 e2) = do
-    putStrLn "Subtraction:"
-    visit e1
-    visit e2
+  leftId  <- visit e1          -- recurse first
+  rightId <- visit e2
+  nid     <- freshId
+  emitNode nid (IADD 32 32)
+  emitEdge leftId  nid
+  emitEdge rightId nid
+  return nid
+
 visit (Mul e1 e2) = do
-    putStrLn "Multiplication:"
-    visit e1
-    visit e2
-visit (Div e1 e2) = do
-    putStrLn "Division:"
-    visit e1
-    visit e2
-visit (Tap e) = do
-    putStrLn "Tap (fanout):"
-    visit e 
+  leftId  <- visit e1
+  rightId <- visit e2
+  nid     <- freshId
+  emitNode nid (IMUL 32 32)
+  emitEdge leftId  nid
+  emitEdge rightId nid
+  return nid
+
+visit (Talos e) = visit e      -- wrapper, pass straight through
+
+-- ─────────────────────────────────────────────────────────────
+-- Entry point
+-- ─────────────────────────────────────────────────────────────
 
 irGen :: Expr -> IO ()
 irGen prog = do
-    putStrLn $ show prog
-    visit prog
-    putStrLn "IR emission not yet implemented."
+  let finalState = execState (visit prog) initIRState
+  let hg         = irGraph finalState
+  putStrLn "=== Nodes ==="
+  mapM_ print (Map.toList (hgNodes hg))
+  putStrLn "=== Edges ==="
+  mapM_ print (hgEdges hg)
