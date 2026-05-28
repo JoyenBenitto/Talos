@@ -1,5 +1,4 @@
 module LangTypes (
-    Talos(..),
     PE(..),
     Expr(..)
 )where
@@ -21,14 +20,11 @@ data PE
 type BitWidth = Int -- Basically going to be a 32 bit int for now
 
 data Expr 
-    = Lit Int
+    = Talos Expr
+    | Lit Int
     | Add Expr Expr
     | Sub Expr Expr
     | Mul Expr Expr
     | Div Expr Expr
     | Tap Expr          -- fanout / wire tap
-    deriving (Show, Eq)
-
-data Talos 
-    = Talos Expr
     deriving (Show, Eq)
