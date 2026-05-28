@@ -1,4 +1,7 @@
-module MyLib (someFunc) where
+module MyLib (
+    someFunc, 
+    module LangTypes
+    ) where
 
 import LangTypes
 

@@ -1,4 +1,8 @@
-module LangTypes where
+module LangTypes (
+    Talos(..),
+    PE(..),
+    Expr(..)
+)where
 
 {-- 
 contains ADT required for the language specifications
@@ -23,4 +27,8 @@ data Expr
     | Mul Expr Expr
     | Div Expr Expr
     | Tap Expr          -- fanout / wire tap
+    deriving (Show, Eq)
+
+data Talos 
+    = Talos Expr
     deriving (Show, Eq)
