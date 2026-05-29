@@ -6,7 +6,7 @@ interface IfcAxiStream#(
     (*always_enabled, always_ready, prefix=""*)
     method Bit#(1) tVALID();
     (*always_enabled, prefix=""*)
-    method Action tREADY(Bit#(1) tready);
+    method Action tready(Bit#(1) tREADY);
     (*always_enabled, always_ready, prefix=""*)
     method Bit#(dataWidth) tDATA();
     (*always_enabled, always_ready, prefix=""*)
